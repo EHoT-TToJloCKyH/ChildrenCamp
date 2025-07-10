@@ -18,7 +18,7 @@ struct Dish
 	float carbs; //углеводы (г)
 	bool IsGluten; //глютенность
 	bool IsLactose;  //лактозность
-
+	bool IsUsed; //использованность
 
 };
 

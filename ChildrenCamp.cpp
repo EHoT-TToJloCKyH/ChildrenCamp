@@ -13,10 +13,11 @@
 
 /*
 * ДОБАВИТЬ:
-* - АЛЛЕРГИИ
-* - НА НЕДЕЛЮ для повторов
-* - вывод в txt(если захочется, то в word;D)
+* - АЛЛЕРГИИ - готово
+* - НА НЕДЕЛЮ без повторов - готово
+* - вывод в txt(если захочется, то в word;D) - готово
 */
+
 
 /// <summary>
 /// Типы меню
@@ -99,9 +100,6 @@ void ShowStartMenu()
 		printf("Что вы хотите сделать?\n");
 		printf("1 - Составить меню\n");
 		printf("2 - Выход из программы\n");
-		//шиза
-		//шиза
-		//шиза
 }
 /// <summary>
 /// Вывод меню выбора возрастной категории
@@ -176,11 +174,13 @@ int GetChoice(int menuNumber)
 /// <param name="dishCount">Кол-во блюд</param>
 /// <param name="target">Целевые значения калорий</param>
 /// <returns>true, если проходит по калориям, иначе false</returns>
-bool isMenuValid(const struct Dish* menu, int dishCount, const struct NutritionTarget* target) {
+bool isMenuValid(const struct Dish* menu, int dishCount, const struct NutritionTarget* target, enum Allergy IsAllergy) {
 	float totalCalories = 0; //общее число калорий
 
 	for (int i = 0; i < dishCount; i++) {
-		totalCalories += menu[i].callories; 
+		totalCalories += menu[i].callories;
+		if ((IsAllergy == Gluten && menu[i].IsGluten) || (IsAllergy == Lactose && menu[i].IsLactose) || (IsAllergy == GlutenAndLactose && (menu[i].IsGluten && menu[i].IsLactose)))
+			return false;
 	}
 
 	float tolerance = 0.25f; //25% погрешность
@@ -199,7 +199,7 @@ bool isMenuValid(const struct Dish* menu, int dishCount, const struct NutritionT
 /// <param name="menuCount">Кол-во созданных меню</param>
 /// <param name="sumTarget">Сумма калорий</param>
 void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
-	const struct NutritionTarget* target, struct Dish* menu, int* menuCount, struct NutritionTarget* sumTarget) {
+	const struct NutritionTarget* target, struct Dish* menu, int* menuCount, struct NutritionTarget* sumTarget, enum Allergy IsAllergy) {
 	srand((unsigned)time(NULL));
 	srand((unsigned)rand());
 	int attempts = 0; //попытки
@@ -219,7 +219,7 @@ void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
 		{"Ужин_Горячее_блюдо", "Ужин_Овощи/Салат", "Ужин_Напиток", "Хлеб", NULL}
 	};
 	//количество обязательных категорий для каждого приёма пищи
-	int requiredCounts[5] = { 5, 2, 6, 2, 4 }; 
+	int requiredCounts[5] = { 5, 2, 6, 2, 4 };
 
 	while (attempts < MAX_ATTEMPTS && !isFoundValidMenu) {
 		*menuCount = 0; //счётчик меню
@@ -244,18 +244,23 @@ void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
 			//выбираем случайное блюдо из этой категории
 			int dishIndex = rand() % types[typeIndex].count;
 			struct Dish* dish = &types[typeIndex].dishes[dishIndex];
-
+			if (dish->IsUsed == true) //если блюдо было использовано, подбираем другое
+				continue;
 			//добавляем блюдо в меню
 			menu[*menuCount] = *dish;
 			(*menuCount)++;
-
+			
 			currentCalories += dish->callories;
 			
 		}
 
 		//проверяем, соответствует ли меню требованиям по калориям
-		if (isMenuValid(menu, *menuCount, target)) {
+		if (isMenuValid(menu, *menuCount, target,IsAllergy)) {
 			isFoundValidMenu = true;
+			for (int i = 0; i < *menuCount; i++)
+			{
+				menu[i].IsUsed = true;
+			}
 		}
 		else
 		{
@@ -267,7 +272,8 @@ void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
 		*menuCount = 0;
 		printf("Не удалось составить меню, соответствующее требованиям за %d попыток\n", MAX_ATTEMPTS);
 	}
-	else { //засчитываем в сумму целевых параметров
+	else
+	{	//засчитываем в сумму целевых параметров
 		(*sumTarget).calories += target->calories;
 		(*sumTarget).protein += target->protein;
 		(*sumTarget).fats += target->fats;
@@ -320,6 +326,48 @@ void PrintMenu(int* menuCount, struct Dish* menu, const struct NutritionTarget* 
 	printf("=================================================================================\n");
 	menuCount = 0;
 }
+
+/// <summary>
+/// Функция для вывода меню для выбранного приёма пищи
+/// </summary>
+/// <param name="menuCount"></param>
+/// <param name="menu"></param>
+/// <param name="target"></param>
+/// <param name="MenuMessage">Сообщение, всплывающее перед выводом меню</param>
+/// <param name="sumParams"></param>
+void PrintMenuInFile(int* menuCount, struct Dish* menu, const struct NutritionTarget* target, const char* MenuMessage, struct NutritionTarget* sumParams, FILE *fp)
+{
+
+	if (fp == NULL)
+		perror("Неудачная попытка создания файла или записи в него");
+	if (*menuCount > 0)
+	{
+		
+		fprintf(fp,MenuMessage); //выводим сообщение для указанного типа меню
+		//общие КБЖУ
+		float totalCalories = 0, totalProtein = 0, totalFats = 0, totalCarbs = 0;
+
+		//считаем и выводим общее КБЖУ получившегося меню
+		for (int i = 0; i < *menuCount; i++) {
+			fprintf(fp, "- %s (%.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г)\n",
+				menu[i].name, menu[i].callories, menu[i].protein, menu[i].fats, menu[i].carbs);
+
+			totalCalories += menu[i].callories;
+			totalProtein += menu[i].protein;
+			totalFats += menu[i].fats;
+			totalCarbs += menu[i].carbs;
+		}
+
+		//выводим получившееся КБЖУ с меню на этот приём пищи
+		fprintf(fp,"\nИтого: %.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г\n",
+			totalCalories, totalProtein, totalFats, totalCarbs);
+		//выводим целевое КБЖУ с меню на этот приём пищи
+		fprintf(fp, "Цель: %.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г\n",
+			(*target).calories, (*target).protein, (*target).fats, (*target).carbs);
+	}
+	fprintf(fp, "=================================================================================\n");
+	menuCount = 0;
+}
 int main(void)
 {
 	int choice; //выбранный юзером пункт меню
@@ -336,7 +384,7 @@ int main(void)
 	//итоговая и целевая сумма параметров меню
 	struct NutritionTarget* SumParams = (struct NutritionTarget*)malloc(sizeof(struct NutritionTarget)); SumParams->calories = 0; SumParams->protein = 0; SumParams->fats = 0; SumParams->carbs = 0;
 	struct NutritionTarget* SumTarget = (struct NutritionTarget*)malloc(sizeof(struct NutritionTarget)); SumTarget->calories = 0; SumTarget->protein = 0; SumTarget->fats = 0; SumTarget->carbs = 0;
-
+	
 	setlocale(LC_ALL, "rus");
 
 	//приветствие
@@ -370,8 +418,6 @@ int main(void)
 			} while (choice != 1 && choice != 2 && choice != 3);
 			do
 			{
-
-
 				choice = GetChoice(AllergyMenu);
 				switch (choice) //есть ли аллергии
 				{
@@ -391,7 +437,7 @@ int main(void)
 					printf("Некорректный ввод, попробуйте ещё\n");
 					break;
 				}
-			} while (choice != 1 && choice != 2);
+			} while (choice != 1 && choice != 2 && choice != 3 && choice != 4);
 			do
 			{
 				choice = GetChoice(DietaryModeMenu);
@@ -477,47 +523,104 @@ int main(void)
 			
 			//получение списка блюд из файла по категориям
 			readDishesFromFile("DishBase.txt", &types, &typeCount);
-			//создаём меню первого завтрака
-			CreateMenu(types, typeCount, FIRST_BREAKFAST, &firstBreakfastTarget, menu, &menuCount,SumTarget);
-			//выводим меню первого завтрака
-			PrintMenu(&menuCount, menu, &firstBreakfastTarget, STR_MENU_FIR_BREAKFAST, SumParams);
-			//создаём меню второго завтрака
-			CreateMenu(types, typeCount, SECOND_BREAKFAST, &secondBreakfastTarget, menu, &menuCount, SumTarget);
-			//выводим меню второго завтрака
-			PrintMenu(&menuCount, menu, &secondBreakfastTarget, STR_MENU_SEC_BREAKFAST, SumParams);
-			//создаём меню обеда
-			CreateMenu(types, typeCount, LUNCH, &lunchTarget, menu, &menuCount, SumTarget);
-			//выводим меню обеда
-			PrintMenu(&menuCount, menu, &lunchTarget, STR_MENU_LUNCH, SumParams);
-			
-			if (DietaryMode == Full) //если полный день
+			FILE* fp = fopen("WeekMenu.txt","w");
+			if (fp == NULL)
 			{
-				//полдник
-				supperTarget.calories = requiredCalories * SUPPER_CAL_PERCENT;
-				supperTarget.protein = requiredProtein * SUPPER_CAL_PERCENT;
-				supperTarget.fats = requiredFats * SUPPER_CAL_PERCENT;
-				supperTarget.carbs = requiredCarbs * SUPPER_CAL_PERCENT;
-				//ужин
-				dinnerTarget.calories = requiredCalories * DINNER_CAL_PERCENT;
-				dinnerTarget.protein = requiredProtein * DINNER_CAL_PERCENT;
-				dinnerTarget.fats = requiredFats * DINNER_CAL_PERCENT;
-				dinnerTarget.carbs = requiredCarbs * DINNER_CAL_PERCENT;
+				perror("Не удалось создать файл/осуществить запись в него\n");
+				return;
+			}
+			printf("=================================================================================\n");
+			fprintf(fp, "=================================================================================\n");
 
-				//создаём меню полдника
-				CreateMenu(types, typeCount, SUPPER, &supperTarget, menu, &menuCount, SumTarget);
-				//выводим меню полдника
-				PrintMenu(&menuCount, menu, &supperTarget, STR_MENU_SUPPER, SumParams);
-				//создаём меню ужина
-				CreateMenu(types, typeCount, DINNER, &dinnerTarget, menu, &menuCount, SumTarget);
-				//выводим меню ужина
-				PrintMenu(&menuCount, menu, &dinnerTarget, STR_MENU_DINNER, SumParams);
+			for(int i = 1; i <= 7; i++)
+			{
+				switch(i)
+				{
+				case 1:
+					printf("---------------------------Понедельник---------------------------------\n");
+					fprintf(fp, "---------------------------Понедельник---------------------------------\n");
+					break;
+				case 2:
+					printf("---------------------------------Вторник---------------------------------\n");
+					fprintf(fp, "---------------------------------Вторник---------------------------------\n");
+					break;
+				case 3:
+					printf("---------------------------------Среда---------------------------------\n");
+					fprintf(fp,"---------------------------------Среда---------------------------------\n");
+					break;
+				case 4:
+					printf("---------------------------------Четверг---------------------------------\n");
+					fprintf(fp, "---------------------------------Четверг---------------------------------\n");
+					break;
+				case 5:
+					printf("---------------------------------Пятница---------------------------------\n");
+					fprintf(fp, "---------------------------------Пятница---------------------------------\n");
+					break;
+				case 6:
+					printf("---------------------------------Суббота---------------------------------\n");
+					fprintf(fp, "---------------------------------Суббота---------------------------------\n");
+					break;
+				case 7:
+					printf("---------------------------------Воскресенье---------------------------------\n");
+					fprintf(fp, "---------------------------------Воскресенье---------------------------------\n");
+					break;
+				}
+				printf("=================================================================================\n");
+				fprintf(fp, "=================================================================================\n");
+				//создаём меню первого завтрака
+				CreateMenu(types, typeCount, FIRST_BREAKFAST, &firstBreakfastTarget, menu, &menuCount, SumTarget, IsAllergy);
+				//выводим меню первого завтрака
+				PrintMenu(&menuCount, menu, &firstBreakfastTarget, STR_MENU_FIR_BREAKFAST, SumParams);
+				PrintMenuInFile(&menuCount, menu, &firstBreakfastTarget, STR_MENU_FIR_BREAKFAST, SumParams, fp);
+				//создаём меню второго завтрака
+				CreateMenu(types, typeCount, SECOND_BREAKFAST, &secondBreakfastTarget, menu, &menuCount, SumTarget, IsAllergy);
+				//выводим меню второго завтрака
+				PrintMenu(&menuCount, menu, &secondBreakfastTarget, STR_MENU_SEC_BREAKFAST, SumParams);
+				PrintMenuInFile(&menuCount, menu, &secondBreakfastTarget, STR_MENU_SEC_BREAKFAST, SumParams,fp);
+				//создаём меню обеда
+				CreateMenu(types, typeCount, LUNCH, &lunchTarget, menu, &menuCount, SumTarget, IsAllergy);
+				//выводим меню обеда
+				PrintMenu(&menuCount, menu, &lunchTarget, STR_MENU_LUNCH, SumParams);
+				PrintMenuInFile(&menuCount, menu, &lunchTarget, STR_MENU_LUNCH, SumParams, fp);
+
+				if (DietaryMode == Full) //если полный день
+				{
+					//полдник
+					supperTarget.calories = requiredCalories * SUPPER_CAL_PERCENT;
+					supperTarget.protein = requiredProtein * SUPPER_CAL_PERCENT;
+					supperTarget.fats = requiredFats * SUPPER_CAL_PERCENT;
+					supperTarget.carbs = requiredCarbs * SUPPER_CAL_PERCENT;
+					//ужин
+					dinnerTarget.calories = requiredCalories * DINNER_CAL_PERCENT;
+					dinnerTarget.protein = requiredProtein * DINNER_CAL_PERCENT;
+					dinnerTarget.fats = requiredFats * DINNER_CAL_PERCENT;
+					dinnerTarget.carbs = requiredCarbs * DINNER_CAL_PERCENT;
+
+
+					//создаём меню полдника
+					CreateMenu(types, typeCount, SUPPER, &supperTarget, menu, &menuCount, SumTarget, IsAllergy);
+					//выводим меню полдника
+					PrintMenu(&menuCount, menu, &supperTarget, STR_MENU_SUPPER, SumParams);
+					PrintMenuInFile(&menuCount, menu, &supperTarget, STR_MENU_SUPPER, SumParams, fp);
+					//создаём меню ужина
+					CreateMenu(types, typeCount, DINNER, &dinnerTarget, menu, &menuCount, SumTarget, IsAllergy);
+					//выводим меню ужина
+					PrintMenu(&menuCount, menu, &dinnerTarget, STR_MENU_DINNER, SumParams);
+					PrintMenuInFile(&menuCount, menu, &dinnerTarget, STR_MENU_DINNER, SumParams, fp);
+
+
+				}
 			}
 			//выводим общий итог и цель для сравнения
 			printf("=================================================================================\n");
+			fprintf(fp, "=================================================================================\n");
 			printf("\nОбщий итог: %.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г\n", SumParams->calories, SumParams->protein, SumParams->fats, SumParams->carbs);
+			fprintf(fp, "\nОбщий итог: %.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г\n", SumParams->calories, SumParams->protein, SumParams->fats, SumParams->carbs);
+
 
 			printf("Общая цель: %.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г\n", SumTarget->calories, SumTarget->protein, SumTarget->fats, SumTarget->carbs);
-
+			fprintf(fp, "Общая цель: %.2f ккал, белки: %.2f г, жиры: %.2f г, углеводы: %.2f г\n", SumTarget->calories, SumTarget->protein, SumTarget->fats, SumTarget->carbs);
+			fclose(fp); //закрываем файловый поток
 			//освобождаем память
 			for (int i = 0; i < typeCount; i++) {
 				for (int j = 0; j < types[i].count; j++) {
