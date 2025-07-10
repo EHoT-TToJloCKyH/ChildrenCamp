@@ -14,7 +14,7 @@
 /*
 * ДОБАВИТЬ:
 * - АЛЛЕРГИИ
-* - НА НЕДЕЛЮ без повторов
+* - НА НЕДЕЛЮ для повторов
 * - вывод в txt(если захочется, то в word;D)
 */
 
@@ -44,8 +44,10 @@ enum Age
 /// </summary>
 enum Allergy
 {
-	Yes,
-	No
+	No,
+	Gluten,
+	Lactose,
+	GlutenAndLactose
 };
 
 /// <summary>
@@ -118,8 +120,11 @@ void ShowAgeMenu()
 void ShowAllergyMenu()
 {
 	printf("Известно ли о наличии аллергий/запретов у детей на какие-либо продукты питания?\n");
-	printf("1 - Да\n");
-	printf("2 - Нет\n");
+	printf("1 - Нет\n");
+	printf("2 - На глютен\n");
+	printf("3 - На лактозу\n");
+	printf("4 - На глютен и лактозу\n");
+
 }
 /// <summary>
 /// Вывод меню типа дня
@@ -318,19 +323,19 @@ void PrintMenu(int* menuCount, struct Dish* menu, const struct NutritionTarget* 
 int main(void)
 {
 	int choice; //выбранный юзером пункт меню
-	Age TargetAge; //целевой возраст
-	Allergy IsAllergy; //есть ли аллергия
-	DietaryMode DietMode; //тип дня лагеря
+	enum Age TargetAge; //целевой возраст
+	enum Allergy IsAllergy; //есть ли аллергия
+	enum DietMode DietaryMode; //тип дня лагеря
 	struct TypeOfDish* types = NULL; //типы блюд
 	int typeCount = 0; //счётчик типов блюд
 	float requiredCalories, requiredProtein, requiredFats, requiredCarbs; //требуемые КБЖУ
 	//целевые показатели каждого приёма пищи
-	NutritionTarget firstBreakfastTarget, secondBreakfastTarget, lunchTarget, supperTarget, dinnerTarget;
+	struct NutritionTarget firstBreakfastTarget, secondBreakfastTarget, lunchTarget, supperTarget, dinnerTarget;
 	struct Dish menu[10]; //меню
 	int menuCount = 0; //счётчик меню
 	//итоговая и целевая сумма параметров меню
-	NutritionTarget* SumParams = (struct NutritionTarget*)malloc(sizeof(struct NutritionTarget)); SumParams->calories = 0; SumParams->protein = 0; SumParams->fats = 0; SumParams->carbs = 0;
-	NutritionTarget* SumTarget = (struct NutritionTarget*)malloc(sizeof(struct NutritionTarget)); SumTarget->calories = 0; SumTarget->protein = 0; SumTarget->fats = 0; SumTarget->carbs = 0;
+	struct NutritionTarget* SumParams = (struct NutritionTarget*)malloc(sizeof(struct NutritionTarget)); SumParams->calories = 0; SumParams->protein = 0; SumParams->fats = 0; SumParams->carbs = 0;
+	struct NutritionTarget* SumTarget = (struct NutritionTarget*)malloc(sizeof(struct NutritionTarget)); SumTarget->calories = 0; SumTarget->protein = 0; SumTarget->fats = 0; SumTarget->carbs = 0;
 
 	setlocale(LC_ALL, "rus");
 
@@ -370,11 +375,17 @@ int main(void)
 				choice = GetChoice(AllergyMenu);
 				switch (choice) //есть ли аллергии
 				{
-				case 1: //есть
-					IsAllergy = Yes;
-					break;
-				case 2: //нет
+				case 1: //нет
 					IsAllergy = No;
+					break;
+				case 2: //глютен
+					IsAllergy = Gluten;
+					break;
+				case 3: //лактоза
+					IsAllergy = Lactose;
+					break;
+				case 4: //глютен и лактоза
+					IsAllergy = GlutenAndLactose;
 					break;
 				default:
 					printf("Некорректный ввод, попробуйте ещё\n");
@@ -387,7 +398,7 @@ int main(void)
 				switch (choice) //какой режим лагеря
 				{
 				case 1: //полный режим лагеря
-					DietMode = Full;
+					DietaryMode = Full;
 					if (TargetAge == Young7_10)
 					{
 						//расчёт необходимого КБЖУ по полученным данным
@@ -412,10 +423,9 @@ int main(void)
 						requiredFats = TARGET_FATS14_17;
 						requiredCarbs = TARGET_CARBS14_17;
 					}
-
 					break;
 				case 2: //неполный режим лагеря
-					DietMode = NotFull;
+					DietaryMode = NotFull;
 					if (TargetAge == Young7_10)
 					{
 						//расчёт необходимого КБЖУ по полученным данным
@@ -480,7 +490,7 @@ int main(void)
 			//выводим меню обеда
 			PrintMenu(&menuCount, menu, &lunchTarget, STR_MENU_LUNCH, SumParams);
 			
-			if (DietMode == Full) //если полный день
+			if (DietaryMode == Full) //если полный день
 			{
 				//полдник
 				supperTarget.calories = requiredCalories * SUPPER_CAL_PERCENT;

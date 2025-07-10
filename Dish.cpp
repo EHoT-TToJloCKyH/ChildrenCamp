@@ -10,7 +10,7 @@
 //структурный тип "блюдо"
 struct Dish
 {
-	char* name = (char*)malloc(STRING_SIZE * sizeof(char));//название блюда
+	char* name;//название блюда
 	unsigned int weight;//граммовка (г)
 	float callories; //калорийность (ккал)
 	float protein; //белки (г)
@@ -24,8 +24,8 @@ struct Dish
 
 struct TypeOfDish
 {
-	char* typeName = (char*)malloc(STRING_SIZE * sizeof(char)); //название блюда
-	struct Dish* dishes = (struct Dish*)malloc(sizeof(struct Dish)); //блюда
+	char* typeName; //название блюда
+	struct Dish* dishes; //блюда
 	int count; //количество блюд в этом типе
 };
 
