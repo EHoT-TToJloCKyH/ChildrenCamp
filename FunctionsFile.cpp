@@ -67,6 +67,7 @@ void readDishesFromFile(const char* filename, struct TypeOfDish** types, int* ty
 
 			struct Dish* currentDish = &currentType->dishes[currentType->count];
 			currentDish->name = (char*)malloc(STRING_SIZE * sizeof(char));
+			currentDish->IsUsed = false;
 
 			char* token = strtok(line, ";");
 			if (token) strcpy(currentDish->name, token);

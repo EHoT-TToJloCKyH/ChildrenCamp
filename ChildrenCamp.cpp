@@ -15,6 +15,7 @@
 * ДОБАВИТЬ:
 * - АЛЛЕРГИИ - готово
 * - НА НЕДЕЛЮ без повторов - готово
+*  ПРОБЛЕМА С ПОВТОРАМИ. Решение - генератор случайных чисел идёт нахуй
 * - вывод в txt(если захочется, то в word;D) - готово
 */
 
@@ -200,8 +201,6 @@ bool isMenuValid(const struct Dish* menu, int dishCount, const struct NutritionT
 /// <param name="sumTarget">Сумма калорий</param>
 void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
 	const struct NutritionTarget* target, struct Dish* menu, int* menuCount, struct NutritionTarget* sumTarget, enum Allergy IsAllergy) {
-	srand((unsigned)time(NULL));
-	srand((unsigned)rand());
 	int attempts = 0; //попытки
 	bool isFoundValidMenu = false; //найдено ли подходящее меню
 
@@ -224,7 +223,7 @@ void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
 	while (attempts < MAX_ATTEMPTS && !isFoundValidMenu) {
 		*menuCount = 0; //счётчик меню
 		float currentCalories = 0; //текущее кол-во калорий
-
+		srand((unsigned)rand());
 		//выбираем блюда из требуемых категорий
 		for (int i = 0; i < requiredCounts[mealType]; i++) {
 			const char* category = requiredCategories[mealType][i];
@@ -261,6 +260,7 @@ void CreateMenu(struct TypeOfDish* types, int typeCount, enum MealType mealType,
 			{
 				menu[i].IsUsed = true;
 			}
+			menuCount = 0;
 		}
 		else
 		{
@@ -367,6 +367,7 @@ void PrintMenuInFile(int* menuCount, struct Dish* menu, const struct NutritionTa
 	}
 	fprintf(fp, "=================================================================================\n");
 	menuCount = 0;
+	
 }
 int main(void)
 {

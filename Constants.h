@@ -22,7 +22,7 @@
 #define LUNCH_CAL_PERCENT 0.35
 #define SUPPER_CAL_PERCENT 0.1
 #define DINNER_CAL_PERCENT 0.25
-#define MAX_ATTEMPTS 100000
+#define MAX_ATTEMPTS 1000000
 #define STR_MENU_FIR_BREAKFAST "Меню для первого завтрака\n"
 #define STR_MENU_SEC_BREAKFAST "Меню для второго завтрака\n"
 #define STR_MENU_LUNCH "Меню для обеда\n"
